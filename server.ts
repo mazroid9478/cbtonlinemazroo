@@ -955,12 +955,28 @@ function saveStoreToDisk(): void {
   }
 }
 
+// SHA-256 digest of initial default password for first-run admin login before a custom PIN is created
+const DEFAULT_FIRST_RUN_PIN_DIGEST = Buffer.from(
+  '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+  'hex'
+);
+
 function getEnvAdminPin(): string {
   return (process.env.ADMIN_PIN || '').trim();
 }
 
+function isCustomAdminPinConfigured(): boolean {
+  return Boolean(store.adminPinHash);
+}
+
 function isAdminConfigured(): boolean {
-  return Boolean(getEnvAdminPin() || store.adminPinHash);
+  return true;
+}
+
+function verifyFirstRunDefaultPin(pin: string): boolean {
+  const candidate = crypto.createHash('sha256').update(pin).digest();
+  if (candidate.length !== DEFAULT_FIRST_RUN_PIN_DIGEST.length) return false;
+  return crypto.timingSafeEqual(candidate, DEFAULT_FIRST_RUN_PIN_DIGEST);
 }
 
 function hashAdminPin(pin: string): string {
@@ -985,14 +1001,17 @@ function verifyAdminPinHash(pin: string, stored: string): boolean {
 }
 
 function verifyAdminPin(pin: string): boolean {
+  if (store.adminPinHash) {
+    return verifyAdminPinHash(pin, store.adminPinHash);
+  }
+  if (verifyFirstRunDefaultPin(pin)) {
+    return true;
+  }
   const envPin = getEnvAdminPin();
   if (envPin) {
     const a = crypto.createHash('sha256').update(pin).digest();
     const b = crypto.createHash('sha256').update(envPin).digest();
     return crypto.timingSafeEqual(a, b);
-  }
-  if (store.adminPinHash) {
-    return verifyAdminPinHash(pin, store.adminPinHash);
   }
   return false;
 }
@@ -1072,8 +1091,8 @@ function clearAdminRateLimit(req: Request): void {
 }
 
 function requireAdminAuth(req: Request, res: Response, next: NextFunction): void {
-  if (req.get('X-Requested-With') !== 'CBT-MAZRO-Admin') {
-    res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT MAZRO.' });
+  if (req.get('X-Requested-With') !== 'CBT-Online-Admin') {
+    res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT ONLINE.' });
     return;
   }
   const authHeader = req.get('Authorization') || '';
@@ -1584,7 +1603,7 @@ async function fetchSafeExternalUrl(rawUrl: string): Promise<{
       redirect: 'manual',
       signal: AbortSignal.timeout(12000),
       headers: {
-        'User-Agent': 'CBT-MAZRO-MaterialFetcher/1.0',
+        'User-Agent': 'CBT-Online-MaterialFetcher/1.0',
         Accept: 'application/pdf, text/html, text/plain;q=0.9, */*;q=0.5',
       },
     });
@@ -2286,32 +2305,39 @@ async function startServer() {
   app.get('/api/cbt/admin/status', (_req: Request, res: Response) => {
     res.json({
       configured: isAdminConfigured(),
-      envControlled: Boolean(getEnvAdminPin()),
+      usingDefaultPin: !isCustomAdminPinConfigured(),
+      envControlled: false,
     });
   });
 
   app.post('/api/cbt/admin/setup', (req: Request, res: Response) => {
-    if (req.get('X-Requested-With') !== 'CBT-MAZRO-Admin') {
-      res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT MAZRO.' });
+    if (req.get('X-Requested-With') !== 'CBT-Online-Admin') {
+      res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT ONLINE.' });
       return;
     }
     if (!checkAdminRateLimit(req)) {
       res.status(429).json({ error: 'Terlalu banyak percobaan. Silakan tunggu beberapa menit.' });
       return;
     }
-    if (isAdminConfigured()) {
+    if (isCustomAdminPinConfigured()) {
       res.status(409).json({ error: 'PIN Admin sudah dikonfigurasi. Silakan masukkan PIN Admin yang berlaku.' });
       return;
     }
 
     const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {};
+    const defaultPin = typeof body.defaultPin === 'string' ? body.defaultPin.trim() : '';
     const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    if (!defaultPin || !verifyAdminPin(defaultPin)) {
+      res.status(401).json({ error: 'Password default awal salah.' });
+      return;
+    }
     if (pin.length < 6 || pin.length > 100) {
       res.status(400).json({ error: 'PIN Admin baru harus terdiri dari minimal 6 karakter.' });
       return;
     }
 
     store.adminPinHash = hashAdminPin(pin);
+    store.adminPinEpoch = (store.adminPinEpoch || 1) + 1;
     saveStoreToDisk();
     clearAdminRateLimit(req);
 
@@ -2320,16 +2346,12 @@ async function startServer() {
   });
 
   app.post('/api/cbt/admin/login', (req: Request, res: Response) => {
-    if (req.get('X-Requested-With') !== 'CBT-MAZRO-Admin') {
-      res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT MAZRO.' });
+    if (req.get('X-Requested-With') !== 'CBT-Online-Admin') {
+      res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT ONLINE.' });
       return;
     }
     if (!checkAdminRateLimit(req)) {
       res.status(429).json({ error: 'Terlalu banyak percobaan login gagal. Silakan tunggu beberapa menit.' });
-      return;
-    }
-    if (!isAdminConfigured()) {
-      res.status(412).json({ error: 'PIN Admin belum dibuat.', needsSetup: true });
       return;
     }
 
@@ -2342,23 +2364,19 @@ async function startServer() {
 
     clearAdminRateLimit(req);
     const session = issueAdminToken();
-    res.json(session);
+    res.json({
+      ...session,
+      mustCreatePin: !isCustomAdminPinConfigured(),
+    });
   });
 
   app.post('/api/cbt/admin/change-pin', requireAdminAuth, (req: Request, res: Response) => {
-    if (req.get('X-Requested-With') !== 'CBT-MAZRO-Admin') {
-      res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT MAZRO.' });
+    if (req.get('X-Requested-With') !== 'CBT-Online-Admin') {
+      res.status(403).json({ error: 'Permintaan hanya diizinkan dari Portal Admin CBT ONLINE.' });
       return;
     }
     if (!checkAdminRateLimit(req)) {
       res.status(429).json({ error: 'Terlalu banyak percobaan. Silakan tunggu beberapa menit.' });
-      return;
-    }
-    if (getEnvAdminPin()) {
-      res.status(409).json({
-        error:
-          'PIN Admin saat ini dikunci oleh variabel lingkungan server (ADMIN_PIN). Kosongkan ADMIN_PIN pada konfigurasi Secrets jika ingin mengganti PIN melalui aplikasi.',
-      });
       return;
     }
 
@@ -3230,7 +3248,7 @@ async function startServer() {
   }
 
   app.listen(port, '0.0.0.0', () => {
-    console.log(`CBT ONLINE MAZRO server listening on http://0.0.0.0:${port}`);
+    console.log(`CBT ONLINE server listening on http://0.0.0.0:${port}`);
   });
 }
 

@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * CBT ONLINE MAZRO — Core Application Logic (Vanilla ES6+ JavaScript)
+ * CBT ONLINE — Core Application Logic (Vanilla ES6+ JavaScript)
  * ============================================================================
  * Fitur Utama:
  * - Manajemen Identitas Siswa & Sesi Ujian via Local Storage
@@ -176,7 +176,7 @@ function removeStorage(key) {
 /* ==================== SERVER SYNC HELPERS ==================== */
 function getAdminRequestHeaders(extraHeaders = {}) {
   return {
-    'X-Requested-With': 'CBT-MAZRO-Admin',
+    'X-Requested-With': 'CBT-Online-Admin',
     ...(state.adminToken ? { Authorization: `Bearer ${state.adminToken}` } : {}),
     ...extraHeaders,
   };
@@ -3570,7 +3570,7 @@ function generateResultPdfBlob(res) {
   const pdfSubject = res.subject || state.settings?.subject || DEFAULT_SETTINGS.subject;
   const pdfMainTopic = res.mainTopic || state.settings?.mainTopic || DEFAULT_SETTINGS.mainTopic;
   commands.push('0.114 0.306 0.847 rg 40 755 515 56 re f');
-  drawText(56, 786, 'CBT ONLINE MAZRO - LAPORAN HASIL UJIAN', 'F2', 14, '1 1 1');
+  drawText(56, 786, 'CBT ONLINE - LAPORAN HASIL UJIAN', 'F2', 14, '1 1 1');
   drawText(56, 768, `Mata Pelajaran: ${pdfSubject} | Materi: ${pdfMainTopic}`, 'F1', 9.5, '0.88 0.94 1');
 
   y = 732;
@@ -3745,7 +3745,7 @@ function handleDownloadPdf() {
   const safeName = state.activeResult.nama.replace(/[^a-zA-Z0-9]+/g, '_');
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Hasil_CBT_MAZRO_${safeName}_${state.activeResult.nisn}.pdf`;
+  a.download = `Hasil_CBT_ONLINE_${safeName}_${state.activeResult.nisn}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -3797,7 +3797,7 @@ function generateQuestionBankPdfBlob(questionsList, filterMeta = {}) {
     // Compact running header on continuation pages
     commands.push('0.96 0.98 1 rg 40 792 515 24 re f');
     commands.push('0.84 0.89 0.96 RG 0.6 w 40 792 515 24 re S');
-    drawText(50, 800, 'CBT ONLINE MAZRO - BANK SOAL & KUNCI JAWABAN', 'F2', 9, '0.114 0.306 0.847');
+    drawText(50, 800, 'CBT ONLINE - BANK SOAL & KUNCI JAWABAN', 'F2', 9, '0.114 0.306 0.847');
     drawText(425, 800, state.settings?.subject || DEFAULT_SETTINGS.subject, 'F2', 8.5, '0.28 0.34 0.43');
     y = 772;
   };
@@ -3808,7 +3808,7 @@ function generateQuestionBankPdfBlob(questionsList, filterMeta = {}) {
   const duration = state.settings?.durationMinutes || EXAM_DURATION_MINUTES;
 
   commands.push('0.114 0.306 0.847 rg 40 754 515 58 re f');
-  drawText(54, 788, 'CBT ONLINE MAZRO - BANK SOAL & KUNCI JAWABAN', 'F2', 13.5, '1 1 1');
+  drawText(54, 788, 'CBT ONLINE - BANK SOAL & KUNCI JAWABAN', 'F2', 13.5, '1 1 1');
   drawText(54, 770, `Mata Pelajaran: ${subject} | Materi: ${mainTopic}`, 'F1', 9, '0.88 0.94 1');
 
   // Summary Meta Box
@@ -3959,7 +3959,7 @@ function generateQuestionBankPdfBlob(questionsList, filterMeta = {}) {
   const pageStreams = pageCommandLists.map((cmds, pIdx) => {
     const pageCmds = [...cmds];
     pageCmds.push('0.88 0.91 0.94 RG 0.6 w 40 38 m 555 38 l S');
-    pushTextCmd(pageCmds, 40, 24, 'CBT ONLINE MAZRO - Bank Soal & Kunci Jawaban Resmi', 'F1', 8, '0.45 0.51 0.60');
+    pushTextCmd(pageCmds, 40, 24, 'CBT ONLINE - Bank Soal & Kunci Jawaban Resmi', 'F1', 8, '0.45 0.51 0.60');
     pushTextCmd(pageCmds, 488, 24, `Halaman ${pIdx + 1} dari ${totalPages}`, 'F1', 8, '0.45 0.51 0.60');
     return pageCmds.join('\n');
   });
@@ -3976,7 +3976,7 @@ function exportQuestionBankToPdf() {
 
   const blob = generateQuestionBankPdfBlob(list, meta);
   const dateTag = new Date().toISOString().slice(0, 10);
-  triggerFileDownload(blob, `Bank_Soal_dan_Kunci_CBT_MAZRO_${dateTag}.pdf`);
+  triggerFileDownload(blob, `Bank_Soal_dan_Kunci_CBT_ONLINE_${dateTag}.pdf`);
   showToast(`Berhasil mengekspor ${list.length} soal beserta kunci jawaban ke PDF.`, 'success');
 }
 
@@ -5381,34 +5381,39 @@ async function openAdminPortal() {
   if (toggleBtn) toggleBtn.textContent = 'Lihat';
   if (setupCopyBtn) setupCopyBtn.classList.add('hidden');
 
-  let configured = true;
+  let usingDefaultPin = false;
   try {
     const res = await fetch('/api/cbt/admin/status', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      configured = Boolean(data?.configured);
+      usingDefaultPin = Boolean(data?.usingDefaultPin);
     }
   } catch {
-    configured = true;
+    usingDefaultPin = false;
   }
-  state.adminPinConfigured = configured;
+  state.adminPinConfigured = true;
 
-  if (!configured) {
-    if (titleEl) titleEl.textContent = 'Buat PIN Portal Admin';
+  if (setupGenBtn) setupGenBtn.classList.add('hidden');
+  if (confirmGroup) confirmGroup.classList.add('hidden');
+  if (confirmInput) confirmInput.required = false;
+  if (hintEl) hintEl.classList.remove('hidden');
+
+  if (usingDefaultPin) {
+    if (titleEl) titleEl.textContent = 'Masuk Portal Admin (Awal)';
     if (descEl) {
       descEl.textContent =
-        'PIN Portal Admin belum diatur. Buat atau klik Generate PIN (minimal 6 karakter) untuk mengaktifkan dan mengamankan akses Admin.';
+        'Masuk pertama kali menggunakan Default Password (admin123). Setelah masuk, Anda akan diminta membuat PIN Admin baru.';
     }
-    if (labelEl) labelEl.textContent = 'PIN Admin Baru';
+    if (labelEl) labelEl.textContent = 'Default Password / PIN Admin';
     if (pinInput) {
-      pinInput.placeholder = 'Minimal 6 karakter atau klik Generate PIN';
-      pinInput.setAttribute('autocomplete', 'new-password');
+      pinInput.placeholder = 'Masukkan Default Password (admin123)';
+      pinInput.setAttribute('autocomplete', 'current-password');
     }
-    if (setupGenBtn) setupGenBtn.classList.remove('hidden');
-    if (hintEl) hintEl.classList.add('hidden');
-    if (confirmGroup) confirmGroup.classList.remove('hidden');
-    if (confirmInput) confirmInput.required = true;
-    if (submitBtn) submitBtn.textContent = 'Simpan PIN & Masuk';
+    if (hintEl) {
+      hintEl.innerHTML =
+        'Masuk pertama kali dengan password default <strong>admin123</strong>, lalu buat PIN Admin pribadi minimal 6 karakter.';
+    }
+    if (submitBtn) submitBtn.textContent = 'Masuk & Buat PIN';
   } else {
     if (titleEl) titleEl.textContent = 'Akses Portal Admin';
     if (descEl) {
@@ -5420,10 +5425,10 @@ async function openAdminPortal() {
       pinInput.placeholder = 'Masukkan PIN Admin';
       pinInput.setAttribute('autocomplete', 'current-password');
     }
-    if (setupGenBtn) setupGenBtn.classList.add('hidden');
-    if (hintEl) hintEl.classList.remove('hidden');
-    if (confirmGroup) confirmGroup.classList.add('hidden');
-    if (confirmInput) confirmInput.required = false;
+    if (hintEl) {
+      hintEl.innerHTML =
+        'PIN Admin dapat di-generate dan diubah kapan saja dari dalam Portal Admin melalui tombol <strong>Generate / Ubah PIN</strong>.';
+    }
     if (submitBtn) submitBtn.textContent = 'Buka Admin';
   }
 
@@ -5434,25 +5439,11 @@ async function openAdminPortal() {
 async function handleAdminLoginSubmit(e) {
   e.preventDefault();
   const pinInput = document.getElementById('input-admin-pin');
-  const confirmInput = document.getElementById('input-admin-pin-confirm');
   const errEl = document.getElementById('admin-auth-error');
   const submitBtn = document.getElementById('btn-admin-auth-submit');
 
   const pin = (pinInput?.value || '').trim();
-  const confirmPin = (confirmInput?.value || '').trim();
-
-  if (!state.adminPinConfigured) {
-    if (pin.length < 6) {
-      errEl.textContent = 'PIN Admin baru harus terdiri dari minimal 6 karakter.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if (pin !== confirmPin) {
-      errEl.textContent = 'Konfirmasi PIN Admin baru tidak sama.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-  } else if (!pin) {
+  if (!pin) {
     errEl.textContent = 'PIN Admin wajib diisi.';
     errEl.classList.remove('hidden');
     return;
@@ -5462,23 +5453,15 @@ async function handleAdminLoginSubmit(e) {
   errEl.classList.add('hidden');
 
   try {
-    const endpoint = state.adminPinConfigured ? '/api/cbt/admin/login' : '/api/cbt/admin/setup';
-    const response = await fetch(endpoint, {
+    const response = await fetch('/api/cbt/admin/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Requested-With': 'CBT-MAZRO-Admin',
+        'X-Requested-With': 'CBT-Online-Admin',
       },
       body: JSON.stringify({ pin }),
     });
     const data = await response.json().catch(() => ({}));
-
-    if (response.status === 412 && data?.needsSetup) {
-      state.adminPinConfigured = false;
-      closeModal('modal-admin-auth');
-      openAdminPortal();
-      return;
-    }
 
     if (!response.ok || !data?.token) {
       errEl.textContent = data?.error || 'PIN Admin salah. Silakan periksa kembali dan coba lagi.';
@@ -5490,8 +5473,14 @@ async function handleAdminLoginSubmit(e) {
     state.adminUnlocked = true;
     state.adminPinConfigured = true;
     closeModal('modal-admin-auth');
-    showToast('Berhasil masuk ke Portal Admin.', 'success');
     switchView('admin');
+
+    if (data.mustCreatePin) {
+      showToast('Berhasil masuk dengan password default. Silakan buat PIN Admin baru Anda.', 'success');
+      openAdminPinManageModal(true);
+    } else {
+      showToast('Berhasil masuk ke Portal Admin.', 'success');
+    }
   } catch {
     errEl.textContent = 'Tidak dapat terhubung ke server untuk memverifikasi PIN Admin.';
     errEl.classList.remove('hidden');
@@ -5512,16 +5501,18 @@ function exitAdmin() {
   }
 }
 
-async function openAdminPinManageModal() {
+async function openAdminPinManageModal(isFirstSetup = false) {
   if (!state.adminUnlocked || !state.adminToken) {
     handleAdminUnauthorized();
     return;
   }
 
+  const firstSetup = isFirstSetup === true;
+  const titleEl = document.getElementById('modal-admin-pin-manage-title');
+  const descEl = document.getElementById('admin-pin-manage-desc');
   const newPinInput = document.getElementById('input-new-admin-pin');
   const confirmPinInput = document.getElementById('input-new-admin-pin-confirm');
   const errEl = document.getElementById('admin-pin-manage-error');
-  const envWarnEl = document.getElementById('admin-pin-env-warning');
   const savedBox = document.getElementById('admin-pin-saved-box');
   const savedCode = document.getElementById('admin-pin-saved-code');
   const savedExitBtn = document.getElementById('btn-pin-saved-exit-admin');
@@ -5529,10 +5520,18 @@ async function openAdminPinManageModal() {
   const instantBtn = document.getElementById('btn-instant-generate-admin-pin');
   const genBtn = document.getElementById('btn-generate-new-admin-pin');
 
+  if (titleEl) {
+    titleEl.textContent = firstSetup ? 'Buat PIN Admin Pertama Kali' : 'Generate & Ubah PIN Admin';
+  }
+  if (descEl) {
+    descEl.innerHTML = firstSetup
+      ? 'Anda masuk menggunakan Default Password awal. Silakan buat PIN Admin baru (minimal 6 karakter) atau klik <strong>Generate PIN</strong> untuk menggantikan password default.'
+      : 'Generate kode PIN baru atau atur PIN manual (minimal 6 karakter). Setelah disimpan, gunakan PIN baru tersebut saat masuk kembali setelah <strong>Keluar Admin</strong>.';
+  }
+
   if (newPinInput) newPinInput.value = '';
   if (confirmPinInput) confirmPinInput.value = '';
   if (errEl) errEl.classList.add('hidden');
-  if (envWarnEl) envWarnEl.classList.add('hidden');
   if (savedBox) savedBox.classList.add('hidden');
   if (savedCode) savedCode.textContent = '--------';
   if (savedExitBtn) savedExitBtn.classList.add('hidden');
@@ -5541,25 +5540,6 @@ async function openAdminPinManageModal() {
   if (genBtn) genBtn.disabled = false;
 
   openModal('modal-admin-pin-manage');
-
-  try {
-    const res = await fetch('/api/cbt/admin/status', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.envControlled) {
-        if (envWarnEl) {
-          envWarnEl.textContent =
-            'PIN Admin saat ini dikunci oleh variabel lingkungan server (ADMIN_PIN). Kosongkan ADMIN_PIN pada konfigurasi Secrets jika ingin mengubah atau men-generate PIN melalui Portal Admin.';
-          envWarnEl.classList.remove('hidden');
-        }
-        if (saveBtn) saveBtn.disabled = true;
-        if (instantBtn) instantBtn.disabled = true;
-        if (genBtn) genBtn.disabled = true;
-      }
-    }
-  } catch {
-    // Abaikan jika gagal cek status; server akan memvalidasi ulang saat submit
-  }
 }
 
 async function submitAdminPinChange(payload) {
@@ -5587,7 +5567,7 @@ async function submitAdminPinChange(payload) {
       headers: {
         ...getAdminRequestHeaders(),
         'Content-Type': 'application/json',
-        'X-Requested-With': 'CBT-MAZRO-Admin',
+        'X-Requested-With': 'CBT-Online-Admin',
       },
       body: JSON.stringify(payload),
     });
@@ -7795,7 +7775,7 @@ function exportResultsToCsv() {
     state.adminResultClassFilter && state.adminResultClassFilter !== 'ALL'
       ? `_${getSelectedResultClassLabel(state.adminResultClassFilter).replace(/[^a-zA-Z0-9-]+/g, '_')}`
       : '';
-  triggerFileDownload(blob, `Hasil_Penilaian_CBT_MAZRO${classTag}_${dateTag}.csv`);
+  triggerFileDownload(blob, `Hasil_Penilaian_CBT_ONLINE${classTag}_${dateTag}.csv`);
   showToast(
     `Berhasil mengekspor ${rowsData.length} data hasil (${getSelectedResultClassLabel()}) ke CSV.`,
     'success'
@@ -7867,7 +7847,7 @@ function exportResultsToExcel() {
       </head>
       <body>
         <table>
-          <tr><td colspan="12" class="title">CBT ONLINE MAZRO - LAPORAN HASIL PENILAIAN SISWA</td></tr>
+          <tr><td colspan="12" class="title">CBT ONLINE - LAPORAN HASIL PENILAIAN SISWA</td></tr>
           <tr><td colspan="12" class="meta">Mata Pelajaran: ${escapeHtml(subject)} | Materi: ${escapeHtml(mainTopic)} | Filter: ${escapeHtml(classScopeLabel)}</td></tr>
           <tr><td colspan="12" class="meta">Tanggal Ekspor: ${escapeHtml(formatDateTimeID(new Date().toISOString()))} | Total Peserta: ${rowsData.length} | Lulus (≥75): ${passCount} | Rata-rata Nilai: ${avgScore}</td></tr>
         </table>
@@ -7908,7 +7888,7 @@ function exportResultsToExcel() {
     state.adminResultClassFilter && state.adminResultClassFilter !== 'ALL'
       ? `_${getSelectedResultClassLabel(state.adminResultClassFilter).replace(/[^a-zA-Z0-9-]+/g, '_')}`
       : '';
-  triggerFileDownload(blob, `Hasil_Penilaian_CBT_MAZRO${classTag}_${dateTag}.xls`);
+  triggerFileDownload(blob, `Hasil_Penilaian_CBT_ONLINE${classTag}_${dateTag}.xls`);
   showToast(
     `Berhasil mengekspor ${rowsData.length} data hasil (${classScopeLabel}) ke Excel (.xls).`,
     'success'
@@ -8547,7 +8527,7 @@ function downloadPgCsvTemplate() {
   const lines = [headers.map(csvEscape).join(','), ...sampleRows.map((row) => row.map(csvEscape).join(','))];
   const bom = '\uFEFF';
   const blob = new Blob([bom + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-  triggerFileDownload(blob, 'Template_Soal_PG_MAZRO.csv');
+  triggerFileDownload(blob, 'Template_Soal_PG_CBT.csv');
   showToast('Template CSV Pilihan Ganda berhasil diunduh.', 'success');
 }
 
@@ -8587,7 +8567,7 @@ function downloadPgJsonTemplate() {
   const blob = new Blob([JSON.stringify(templateData, null, 2)], {
     type: 'application/json;charset=utf-8;',
   });
-  triggerFileDownload(blob, 'Template_Soal_PG_MAZRO.json');
+  triggerFileDownload(blob, 'Template_Soal_PG_CBT.json');
   showToast('Template JSON Pilihan Ganda berhasil diunduh.', 'success');
 }
 
@@ -8804,7 +8784,7 @@ function exportQuestionBankJson() {
   }
 
   const payload = {
-    app: 'CBT ONLINE MAZRO',
+    app: 'CBT ONLINE',
     version: 1,
     exportedAt: new Date().toISOString(),
     settings: state.settings || DEFAULT_SETTINGS,
@@ -8815,7 +8795,7 @@ function exportQuestionBankJson() {
     type: 'application/json;charset=utf-8;',
   });
   const dateTag = new Date().toISOString().slice(0, 10);
-  triggerFileDownload(blob, `Bank_Soal_CBT_MAZRO_${dateTag}.json`);
+  triggerFileDownload(blob, `Bank_Soal_CBT_ONLINE_${dateTag}.json`);
   showToast(`Berhasil mengexport ${list.length} soal ke arsip JSON.`, 'success');
 }
 
@@ -8867,7 +8847,7 @@ function exportQuestionBankCsv() {
     type: 'text/csv;charset=utf-8;',
   });
   const dateTag = new Date().toISOString().slice(0, 10);
-  triggerFileDownload(blob, `Bank_Soal_CBT_MAZRO_${dateTag}.csv`);
+  triggerFileDownload(blob, `Bank_Soal_CBT_ONLINE_${dateTag}.csv`);
   showToast(`Berhasil mengexport ${list.length} soal ke arsip CSV.`, 'success');
 }
 

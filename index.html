@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBT ONLINE MAZRO — Ujian Informatika &amp; Berpikir Komputasional</title>
+    <title>CBT ONLINE — Ujian Informatika &amp; Berpikir Komputasional</title>
     <meta
       name="description"
       content="Aplikasi ujian berbasis komputer (CBT) mata pelajaran Informatika dan Berpikir Komputasional menggunakan HTML, CSS, dan JavaScript dengan Local Storage."
     />
-    <meta property="og:title" content="CBT ONLINE MAZRO" />
+    <meta property="og:title" content="CBT ONLINE" />
     <meta
       property="og:description"
       content="Aplikasi ujian berbasis komputer (CBT) mata pelajaran Informatika dan Berpikir Komputasional menggunakan HTML, CSS, dan JavaScript dengan Local Storage."
@@ -47,7 +47,7 @@
             <path d="M8 10l2.5 2L8 14"></path>
             <path d="M13 14h3"></path>
           </svg>
-          <span>CBT ONLINE MAZRO</span>
+          <span>CBT ONLINE</span>
         </a>
 
         <!-- Zone 2: Concise Single-Line Navigation Links -->
@@ -243,7 +243,7 @@
       <section class="view" id="view-admin-gate" aria-labelledby="admin-gate-heading">
         <div class="container admin-gate-container">
           <div class="card admin-gate-card">
-            <p class="kicker">Akses Khusus Pengajar &amp; Administrator · CBT ONLINE MAZRO</p>
+            <p class="kicker">Akses Khusus Pengajar &amp; Administrator · CBT ONLINE</p>
             <h1 class="admin-gate-title" id="admin-gate-heading">Portal Admin Ujian Online</h1>
             <p class="card-desc">
               Halaman ini diakses melalui link URL khusus Portal Admin dan tidak tampil pada halaman Masuk Siswa. Masukkan PIN Admin untuk mengelola bank soal, token per kelas, monitoring pengerjaan, dan rekap hasil penilaian.
@@ -266,7 +266,7 @@
           <div class="card admin-table-card" id="material-reader-card">
             <div class="admin-toolbar">
               <div>
-                <p class="kicker" id="material-reader-kicker">Pedoman Materi &amp; Link Akses · CBT ONLINE MAZRO</p>
+                <p class="kicker" id="material-reader-kicker">Pedoman Materi &amp; Link Akses · CBT ONLINE</p>
                 <h1 class="admin-title" id="material-reader-title">Memuat Materi...</h1>
               </div>
               <div class="admin-toolbar-controls">
@@ -572,7 +572,7 @@
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </div>
-            <p class="kicker">Konfirmasi Pengumpulan Ujian · CBT ONLINE MAZRO</p>
+            <p class="kicker">Konfirmasi Pengumpulan Ujian · CBT ONLINE</p>
             <h1 class="submitted-title" id="submitted-heading">Ujian Telah Diselesaikan</h1>
             <p class="submitted-subtitle">
               Terima kasih, jawaban Anda telah berhasil disimpan dan direkam ke sistem evaluasi.
@@ -672,7 +672,7 @@
           <!-- Printable Report Header -->
           <div class="card result-hero-card">
             <div class="result-identity-block">
-              <p class="kicker">Laporan Hasil Evaluasi · CBT ONLINE MAZRO</p>
+              <p class="kicker">Laporan Hasil Evaluasi · CBT ONLINE</p>
               <h1 class="result-title" id="result-heading">Hasil Ujian Informatika</h1>
 
               <dl class="result-identity-grid">
@@ -773,7 +773,7 @@
         <div class="container admin-container">
           <div class="card admin-header-card">
             <div>
-              <p class="kicker">Panel Pengajar &amp; Administrator · CBT ONLINE MAZRO</p>
+              <p class="kicker">Panel Pengajar &amp; Administrator · CBT ONLINE</p>
               <h1 class="admin-title" id="admin-heading">Manajemen Bank Soal &amp; Hasil Penilaian</h1>
               <div class="admin-url-strip">
                 <span class="meta-text">Link Khusus Portal Admin:</span>
@@ -1567,7 +1567,7 @@
                         type="text"
                         id="admin-custom-token-input"
                         class="form-input mono-input token-input"
-                        placeholder="Contoh: MAZRO26"
+                        placeholder="Contoh: CBT2026"
                         maxlength="12"
                       />
                       <button type="button" class="btn btn-outline" id="btn-save-custom-token">
@@ -1833,11 +1833,9 @@
         </div>
 
         <form id="admin-pin-manage-form" class="form-stack">
-          <p class="card-desc">
+          <p class="card-desc" id="admin-pin-manage-desc">
             Generate kode PIN baru atau atur PIN manual (minimal 6 karakter). Setelah disimpan, gunakan PIN baru tersebut saat masuk kembali setelah <strong>Keluar Admin</strong>.
           </p>
-
-          <p class="form-error hidden" id="admin-pin-env-warning" role="alert"></p>
 
           <div class="form-group">
             <label for="input-new-admin-pin" class="form-label">PIN Admin Baru</label>
